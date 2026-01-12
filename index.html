@@ -1,0 +1,1117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>FloatLink — Float & Reconcile</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root {
+      --bg-dark: #020617;
+      --bg-card: rgba(15, 23, 42, 0.9);
+      --bg-soft: rgba(15, 23, 42, 0.6);
+      --border-soft: rgba(248, 250, 252, 0.12);
+      --accent-lime: #bef264;
+      --accent-emerald: #22c55e;
+      --text-main: #f9fafb;
+      --text-muted: #9ca3af;
+      --text-soft: #6b7280;
+      --danger: #f97373;
+      --success: #4ade80;
+    }
+
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Inter", sans-serif;
+      background: radial-gradient(circle at top, #0f172a, #020617);
+      color: var(--text-main);
+      line-height: 1.5;
+    }
+
+    .app {
+      min-height: 100vh;
+      padding: 24px 16px 32px;
+    }
+
+    @media (min-width: 768px) {
+      .app {
+        padding: 40px 40px 48px;
+      }
+    }
+  .header-card {
+      position: relative;
+      border-radius: 24px;
+      padding: 20px 18px;
+      margin-bottom: 24px;
+      border: 1px solid rgba(248, 250, 252, 0.12);
+      background: linear-gradient(135deg, #020617, #020617 30%, #111827 60%, #020617);
+      box-shadow: 0 0 60px rgba(74, 222, 128, 0.1);
+      overflow: hidden;
+    }
+
+    .header-glow {
+      position: absolute;
+      border-radius: 999px;
+      filter: blur(60px);
+      opacity: 0.6;
+    }
+
+    .header-glow-1 {
+      width: 260px;
+      height: 260px;
+      background: radial-gradient(circle, rgba(74, 222, 128, 0.4), transparent 60%);
+      top: -140px;
+      right: -100px;
+    }
+
+    .header-glow-2 {
+      width: 220px;
+      height: 220px;
+      background: radial-gradient(circle, rgba(190, 242, 100, 0.4), transparent 60%);
+      bottom: -140px;
+      left: -60px;
+    }
+
+    .header-content {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    @media (min-width: 768px) {
+      .header-content {
+        flex-direction: row;
+        justify-content: space-between;
+        align-items: center;
+      }
+    }
+   h1 {
+      margin: 0;
+      font-size: 1.5rem;
+      letter-spacing: -0.02em;
+    }
+
+    .subtitle {
+      margin: 4px 0 0;
+      font-size: 0.85rem;
+      color: var(--text-soft);
+    }
+
+    .header-right {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .nav-buttons {
+      display: flex;
+      gap: 8px;
+    }
+
+    .nav-btn {
+      padding: 8px 16px;
+      border-radius: 999px;
+      border: 1px solid rgba(248, 250, 252, 0.2);
+      background: rgba(15, 23, 42, 0.8);
+      color: var(--text-main);
+      font-size: 0.8rem;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .nav-btn:hover {
+      background: rgba(30, 64, 175, 0.65);
+    }
+
+    .nav-btn.active {
+      border-color: rgba(190, 242, 100, 0.9);
+      background: rgba(15, 23, 42, 0.9);
+      box-shadow: 0 0 24px rgba(190, 242, 100, 0.3);
+    }
+
+    .subscriber-toggle {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+   font-size: 0.75rem;
+      color: rgba(248, 250, 252, 0.8);
+    }
+
+    .toggle {
+      position: relative;
+      display: inline-flex;
+      width: 42px;
+      height: 22px;
+      border-radius: 999px;
+      background: rgba(15, 23, 42, 0.9);
+      border: 1px solid rgba(248, 250, 252, 0.3);
+      cursor: pointer;
+    }
+
+    .toggle input {
+      display: none;
+    }
+
+    .toggle-knob {
+      position: absolute;
+      top: 1px;
+      left: 1px;
+      width: 18px;
+      height: 18px;
+      border-radius: 999px;
+      background: rgba(248, 250, 252, 0.95);
+      transition: transform 0.15s ease;
+    }
+
+    .toggle input:checked + .toggle-knob {
+      transform: translateX(18px);
+      background: var(--accent-lime);
+    }
+
+    .card {
+      border-radius: 20px;
+      border: 1px solid var(--border-soft);
+      background: var(--bg-card);
+      padding: 16px 16px 18px;
+      margin-bottom: 16px;
+      backdrop-filter: blur(18px);
+    }
+
+    .card-narrow {
+      max-width: 640px;
+    }
+
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+  flex-wrap: wrap;
+    }
+
+    .card-title {
+      font-size: 0.95rem;
+      font-weight: 600;
+    }
+
+    .card-subtitle {
+      margin-top: 2px;
+      font-size: 0.75rem;
+      color: var(--text-soft);
+    }
+
+    .badge-text {
+      font-size: 0.75rem;
+      color: rgba(248, 250, 252, 0.85);
+    }
+
+    .hint-text {
+      margin: 6px 0 0;
+      font-size: 0.75rem;
+      color: var(--text-soft);
+    }
+
+    .list {
+      margin-top: 14px;
+      display: grid;
+      gap: 10px;
+    }
+
+    .grid-2 {
+      display: grid;
+      gap: 12px;
+    }
+
+    .grid-3 {
+      display: grid;
+      gap: 12px;
+    }
+
+    .grid-4 {
+      display: grid;
+      gap: 10px;
+    }
+
+    .grid-6 {
+      display: grid;
+      gap: 8px;
+    }
+
+    @media (min-width: 640px) {
+      .grid-2 {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    @media (min-width: 768px) {
+      .grid-3 {
+        grid-template-columns: 2fr 1fr;
+      }
+      .grid-4 {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+      }
+      .grid-6 {
+        grid-template-columns: repeat(6, minmax(0, 1fr));
+      }
+    }
+
+    .gap {
+      gap: 14px;
+    }
+
+    .subgrid {
+      margin-top: 10px;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .form-group label {
+      font-size: 0.75rem;
+      color: var(--text-soft);
+    }
+
+    input,
+    select {
+      border-radius: 12px;
+      border: 1px solid rgba(148, 163, 184, 0.7);
+      background: rgba(15, 23, 42, 0.9);
+      color: var(--text-main);
+      padding: 7px 10px;
+      font-size: 0.8rem;
+      outline: none;
+    }
+
+    input::placeholder {
+      color: rgba(148, 163, 184, 0.8);
+    }
+   input:focus,
+    select:focus {
+      border-color: rgba(190, 242, 100, 0.8);
+    }
+
+    .btn-primary {
+      border-radius: 999px;
+      border: 1px solid rgba(190, 242, 100, 0.9);
+      background: rgba(22, 101, 52, 0.9);
+      color: var(--text-main);
+      padding: 7px 16px;
+      font-size: 0.8rem;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .btn-primary:hover {
+      background: rgba(34, 197, 94, 0.9);
+      box-shadow: 0 0 18px rgba(22, 163, 74, 0.5);
+    }
+
+    .btn-secondary {
+      border-radius: 999px;
+      border: 1px solid rgba(148, 163, 184, 0.8);
+      background: rgba(15, 23, 42, 0.9);
+      color: var(--text-main);
+      padding: 7px 14px;
+      font-size: 0.78rem;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .btn-secondary:hover {
+      background: rgba(30, 64, 175, 0.8);
+    }
+
+    .btn-action {
+      width: 100%;
+      border-radius: 999px;
+      border: 1px solid rgba(52, 211, 153, 0.8);
+      background: rgba(15, 118, 110, 0.2);
+      padding: 8px 10px;
+      font-size: 0.78rem;
+      color: var(--text-main);
+      cursor: pointer;
+      margin-bottom: 4px;
+    }
+
+  .btn-action.disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
+    .btn-danger {
+      width: 100%;
+      border-radius: 999px;
+      border: 1px solid rgba(248, 113, 113, 0.9);
+      background: rgba(127, 29, 29, 0.6);
+      padding: 8px 10px;
+      font-size: 0.78rem;
+      color: var(--text-main);
+      cursor: pointer;
+    }
+
+    .reconcile-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 12px;
+      gap: 10px;
+    }
+
+    .reconcile-title {
+      font-size: 1.05rem;
+      font-weight: 600;
+    }
+
+    .reconcile-subtitle {
+      margin-top: 2px;
+      font-size: 0.75rem;
+      color: var(--text-soft);
+    }
+
+    .reconcile-total {
+      font-size: 0.8rem;
+      color: var(--text-soft);
+    }
+
+    .total-capital-value {
+      font-weight: 600;
+    }
+
+    .kpi-card {
+      border-radius: 16px;
+      border: 1px solid var(--border-soft);
+      background: var(--bg-soft);
+      padding: 10px 12px;
+  }
+
+    .kpi-label {
+      font-size: 0.7rem;
+      color: var(--text-soft);
+    }
+
+    .kpi-value {
+      font-size: 0.9rem;
+      font-weight: 600;
+      margin-top: 4px;
+    }
+
+    .subcard {
+      border-radius: 18px;
+      border: 1px solid rgba(148, 163, 184, 0.5);
+      background: rgba(15, 23, 42, 0.8);
+      padding: 10px 12px;
+    }
+
+    .subcard-title {
+      font-size: 0.8rem;
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+
+    .scroll-list {
+      max-height: 160px;
+      overflow-y: auto;
+      font-size: 0.78rem;
+      padding-right: 4px;
+    }
+
+    .scroll-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 6px;
+      padding: 4px 0;
+      border-bottom: 1px solid rgba(30, 41, 59, 0.7);
+    }
+
+    .scroll-row:last-child {
+      border-bottom: none;
+    }
+
+    .checkbox-label {
+      display: inline-flex;
+      align-items: center;
+   gap: 6px;
+      font-size: 0.78rem;
+    }
+
+    .checkbox-label input {
+      width: auto;
+    }
+
+    .full {
+      grid-column: 1 / -1;
+    }
+
+    .span-2 {
+      grid-column: span 2;
+    }
+
+    .span-3 {
+      grid-column: span 3;
+    }
+
+    .span-4 {
+      grid-column: span 4;
+    }
+
+    .span-6 {
+      grid-column: span 6;
+    }
+
+    @media (max-width: 767px) {
+      .span-2,
+      .span-3,
+      .span-4,
+      .span-6 {
+        grid-column: 1 / -1;
+      }
+    }
+
+    .guidance-list {
+      margin: 4px 0 0;
+      padding-left: 16px;
+      font-size: 0.75rem;
+      color: var(--text-soft);
+    }
+
+    .modal {
+      position: fixed;
+      inset: 0;
+  display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 40;
+    }
+
+    .modal-backdrop {
+      position: absolute;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.85);
+      backdrop-filter: blur(10px);
+    }
+
+    .modal-content {
+      position: relative;
+      z-index: 41;
+      width: 100%;
+      max-width: 820px;
+      max-height: 90vh;
+      border-radius: 24px;
+      border: 1px solid rgba(148, 163, 184, 0.5);
+      background: radial-gradient(circle at top, #020617, #020617 50%, #020617);
+      padding: 16px 16px 20px;
+      overflow-y: auto;
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .modal-title {
+      font-size: 1rem;
+      font-weight: 600;
+    }
+
+    .timer-ring {
+      width: 60px;
+      height: 60px;
+      border-radius: 999px;
+      border: 3px solid rgba(148, 163, 184, 0.7);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .timer-inner {
+      text-align: center;
+      font-size: 0.7rem;
+    }
+
+    .timer-label {
+      font-size: 0.65rem;
+      color: var(--text-soft);
+    }
+
+    .deal-main {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.8rem;
+    }
+
+    .deal-hint {
+      font-size: 0.7rem;
+      color: var(--text-soft);
+    }
+
+    .chat-card {
+      display: flex;
+      flex-direction: column;
+      min-height: 180px;
+    }
+
+    .chat-list {
+      flex: 1;
+      max-height: 180px;
+      overflow-y: auto;
+      font-size: 0.78rem;
+      padding-right: 4px;
+      margin-bottom: 6px;
+    }
+
+    .chat-bubble {
+      max-width: 80%;
+      border-radius: 16px;
+      padding: 6px 10px;
+      margin-bottom: 4px;
+      font-size: 0.78rem;
+    }
+
+    .chat-bubble.subscriber {
+      margin-left: auto;
+      background: rgba(34, 197, 94, 0.12);
+      text-align: right;
+    }
+
+    .chat-bubble.poster {
+   margin-right: auto;
+      background: rgba(15, 23, 42, 0.9);
+    }
+
+    .chat-meta {
+      font-size: 0.65rem;
+      opacity: 0.7;
+      margin-bottom: 2px;
+    }
+
+    .chat-input-row {
+      display: flex;
+      gap: 6px;
+    }
+
+    .actions-card {
+      font-size: 0.78rem;
+    }
+
+    .toast {
+      position: fixed;
+      left: 50%;
+      bottom: 16px;
+      transform: translateX(-50%);
+      border-radius: 999px;
+      padding: 8px 16px;
+      border: 1px solid rgba(74, 222, 128, 0.6);
+      background: rgba(22, 163, 74, 0.3);
+      font-size: 0.78rem;
+      z-index: 50;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    .bold {
+      font-weight: 600;
+    }
+
+    .label {
+      font-size: 0.7rem;
+      color: var(--text-soft);
+    }
+
+    .mt-2 {
+      margin-top: 4px;
+    }
+
+       .mt-3 {
+      margin-top: 8px;
+    }
+
+    .muted {
+      font-size: 0.8rem;
+      color: var(--text-soft);
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin-top: 8px;
+    }
+
+    .stat-item {
+      text-align: center;
+      padding: 4px;
+      border-radius: 8px;
+      background: rgba(15, 23, 42, 0.6);
+    }
+
+    .stat-value {
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: var(--accent-lime);
+    }
+
+    .stat-label {
+      font-size: 0.6rem;
+      color: var(--text-soft);
+      margin-top: 2px;
+    }
+
+    .stars {
+      color: #fbbf24;
+      font-size: 0.7rem;
+      margin-top: 2px;
+    }
+
+    .progress-bar {
+      height: 6px;
+      border-radius: 999px;
+      background: rgba(15, 23, 42, 0.9);
+      overflow: hidden;
+      margin-top: 4px;
+    }
+
+    .progress-fill {
+      height: 100%;
+    background: var(--accent-lime);
+      transition: width 0.3s ease;
+    }
+
+    /* Recent Activities Section */
+    .recent-activities {
+      margin-top: 24px;
+      border-top: 1px solid var(--border-soft);
+      padding-top: 20px;
+    }
+
+    .activity-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 0;
+      border-bottom: 1px solid rgba(30, 41, 59, 0.7);
+    }
+
+    .activity-item:last-child {
+      border-bottom: none;
+    }
+
+    .activity-info {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .activity-type {
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--text-main);
+    }
+
+    .activity-details {
+      font-size: 0.75rem;
+      color: var(--text-soft);
+    }
+
+    .activity-amount {
+      font-size: 0.85rem;
+      font-weight: 600;
+    }
+
+    .activity-positive {
+      color: var(--accent-emerald);
+    }
+
+    .activity-negative {
+      color: var(--danger);
+   }
+
+    .activity-neutral {
+      color: var(--text-muted);
+    }
+
+    .activity-time {
+      font-size: 0.7rem;
+      color: var(--text-soft);
+      margin-top: 2px;
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header class="header-card">
+      <div class="header-glow header-glow-1"></div>
+      <div class="header-glow header-glow-2"></div>
+      <div class="header-content">
+        <div>
+          <h1>FloatLink — Float &amp; Reconcile</h1>
+          <p class="subtitle">
+            Public float offers • Subscriber-first settlement • Full office reconciliation
+          </p>
+        </div>
+        <div class="header-right">
+          <nav class="nav-buttons">
+            <button id="nav-offers" class="nav-btn active">Offers</button>
+            <button id="nav-providers" class="nav-btn">Providers</button>
+            <button id="nav-reconcile" class="nav-btn">Reconcile</button>
+          </nav>
+          <div class="subscriber-toggle">
+            <span>Subscriber Mode</span>
+            <label class="toggle">
+              <input type="checkbox" id="subscriber-checkbox" />
+              <span class="toggle-knob"></span>
+            </label>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <main>
+      <!-- OFFERS SECTION -->
+      <section id="section-offers">
+        <div class="card">
+          <div class="card-header">
+            <div>
+              <div class="card-title">Live Float Offers (public usernames)</div>
+              <div class="card-subtitle">
+                Real names appear only in the deal room. Subscribers can pick &amp; serve.
+              </div>
+    </div>
+            <div class="badge-text">Smile ID Verified (mock) ✅</div>
+          </div>
+          <div id="offers-list" class="list"></div>
+        </div>
+
+        <div class="card card-narrow">
+          <h3 class="card-title">Post Float Offer (public by username)</h3>
+          <form id="post-offer-form" class="grid-2">
+            <div class="form-group">
+              <label>From Network</label>
+              <select id="post-from">
+                <option>M-Pesa</option>
+                <option>Airtel</option>
+                <option>Tigo</option>
+                <option>Halopesa</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>To Network</label>
+              <select id="post-to">
+                <option>M-Pesa</option>
+                <option>Airtel</option>
+                <option>Tigo</option>
+                <option>Halopesa</option>
+              </select>
+            </div>
+            <div class="form-group full">
+              <label>Amount (TZS)</label>
+              <input id="post-amount" type="text" placeholder="500,000" />
+            </div>
+            <div class="form-group full">
+              <button type="submit" class="btn-primary">Submit Offer</button>
+            </div>
+          </form>
+          <p class="hint-text">Only subscribers can pick &amp; serve your offer.</p>
+        </div>
+
+        <!-- Offers Recent Activities -->
+        <div class="recent-activities">
+          <div class="card">
+            <h3 class="card-title">Recent Offer Activities</h3>
+            <p class="card-subtitle">Last 5 activities related to offers</p>
+            <div id="offers-activities-list"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- PROVIDERS SECTION -->
+  <section id="section-providers" class="hidden">
+        <div class="card">
+          <div class="card-header">
+            <div>
+              <div class="card-title">Verified Float Providers (public usernames)</div>
+              <div class="card-subtitle">
+                Subscribers can toggle visibility of their provider card.
+              </div>
+            </div>
+            <label class="checkbox-label">
+              <input type="checkbox" id="providers-public" checked />
+              <span>Show my provider card publicly</span>
+            </label>
+          </div>
+          <div id="providers-list" class="grid-2"></div>
+          <p id="providers-hidden-text" class="hint-text hidden">
+            Your provider card is currently hidden.
+          </p>
+        </div>
+
+        <!-- Providers Recent Activities -->
+        <div class="recent-activities">
+          <div class="card">
+            <h3 class="card-title">Recent Provider Activities</h3>
+            <p class="card-subtitle">Last 5 activities related to providers</p>
+            <div id="providers-activities-list"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- RECONCILE SECTION -->
+      <section id="section-reconcile" class="hidden">
+        <div class="reconcile-header">
+          <div>
+            <div class="reconcile-title">Reconciliation</div>
+            <div class="reconcile-subtitle">
+              Live view of cash, wallets, banks &amp; reserve (out of circulation)
+            </div>
+          </div>
+          <div class="reconcile-total">
+            Total Capital:
+            <span id="total-capital" class="total-capital-value"></span>
+          </div>
+        </div>
+
+        <div class="grid-4">
+          <div class="kpi-card">
+            <div class="kpi-label">Cash on Hand</div>
+            <div id="kpi-cash" class="kpi-value"></div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-label">M-Pesa</div>
+       <div id="kpi-mpesa" class="kpi-value"></div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-label">Airtel Money</div>
+            <div id="kpi-airtel" class="kpi-value"></div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-label">TigoPesa + Halopesa</div>
+            <div id="kpi-tigo-halo" class="kpi-value"></div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-label">CRDB</div>
+            <div id="kpi-crdb" class="kpi-value"></div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-label">NMB</div>
+            <div id="kpi-nmb" class="kpi-value"></div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-label">Other Banks</div>
+            <div id="kpi-bank" class="kpi-value"></div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-label">Working Float</div>
+            <div id="kpi-working-float" class="kpi-value"></div>
+          </div>
+        </div>
+
+        <div class="grid-2 gap">
+          <!-- Office Movements -->
+          <div class="card">
+            <h3 class="card-title">Office Movements</h3>
+            <p class="card-subtitle">
+              Record cash &amp; wallet IN / OUT for daily reconciliation.
+            </p>
+            <form id="office-move-form" class="grid-4">
+              <select id="om-channel" class="span-2">
+                <option>Cash</option>
+                <option>M-Pesa</option>
+                <option>Airtel</option>
+                <option>Tigo</option>
+                <option>Halopesa</option>
+                <option>CRDB</option>
+                <option>NMB</option>
+                <option>Other Bank</option>
+              </select>
+              <select id="om-direction">
+                <option value="IN">IN (increase)</option>
+                <option value="OUT">OUT (decrease)</option>
+              </select>
+              <input id="om-amount" type="text" placeholder="Amount (TZS)" />
+            <input id="om-amount" type="text" placeholder="Amount (TZS)" />
+              <input id="om-note" class="span-3" type="text" placeholder="Note (required)" />
+              <button type="submit" class="btn-primary">Save Movement</button>
+            </form>
+
+            <div class="subcard">
+              <div class="subcard-title">Recent Movements</div>
+              <div id="office-actions-list" class="scroll-list"></div>
+            </div>
+          </div>
+
+          <!-- Float Circulation -->
+          <div class="card">
+            <h3 class="card-title">Float Circulation</h3>
+            <p class="card-subtitle">
+              Move float into / out of reserve (out of circulation).
+            </p>
+            <form id="circ-form" class="grid-4">
+              <select id="circ-network">
+                <option>M-Pesa</option>
+                <option>Airtel</option>
+                <option>Tigo</option>
+                <option>Halopesa</option>
+              </select>
+              <select id="circ-dir">
+                <option value="TO_RESERVE">To Reserve</option>
+                <option value="FROM_RESERVE">From Reserve</option>
+              </select>
+              <input id="circ-amount" type="text" placeholder="Amount (TZS)" />
+              <input id="circ-note" class="span-2" type="text" placeholder="Note (required)" />
+              <button type="submit" class="btn-primary span-2">Save Float Move</button>
+            </form>
+
+            <div class="grid-2 subgrid">
+              <div class="subcard">
+                <div class="subcard-title">Reserve Actions</div>
+                <div id="reserve-actions-list" class="scroll-list"></div>
+              </div>
+              <div class="subcard">
+                <div class="subcard-title">Guidance</div>
+                <ul class="guidance-list">
+                  <li>Use "To Reserve" to park float out of circulation.</li>
+                  <li>Use "From Reserve" to bring float back into working float.</li>
+                  <li>Use Office Movements for cash, wallets &amp; bank flows.</li>
+                  <li>Always add clear notes for clean month-end audits.</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+
+     <!-- Daily Activities -->
+        <div class="card">
+          <h3 class="card-title">Daily Office Activities</h3>
+          <p class="card-subtitle">
+            Capture detailed office activities: deposits, withdrawals, bill payments, fees, and manual adjustments.
+          </p>
+          <form id="activity-form" class="grid-6">
+            <select id="act-category" class="span-2">
+              <option>Cash Deposit</option>
+              <option>Cash Withdrawal</option>
+              <option>Float Top-up</option>
+              <option>Float Sell</option>
+              <option>Bill Payment</option>
+              <option>Fees / Charges</option>
+              <option>Adjustment</option>
+            </select>
+            <select id="act-channel">
+              <option>Cash</option>
+              <option>M-Pesa</option>
+              <option>Airtel</option>
+              <option>Tigo</option>
+              <option>Halopesa</option>
+              <option>CRDB</option>
+              <option>NMB</option>
+              <option>Other Bank</option>
+            </select>
+            <input id="act-amount" type="text" placeholder="Amount (TZS)" />
+            <input id="act-staff" type="text" placeholder="Staff (optional)" />
+            <input id="act-ref" type="text" placeholder="Reference / Receipt (optional)" />
+            <input id="act-desc" class="span-4" type="text" placeholder="Description (required)" />
+            <button type="submit" class="btn-primary span-2">Save Activity</button>
+          </form>
+
+          <div class="subcard">
+            <div class="subcard-title">Today&apos;s Activities</div>
+            <div id="activities-list" class="scroll-list"></div>
+          </div>
+        </div>
+
+        <!-- Reconcile Recent Activities -->
+        <div class="recent-activities">
+          <div class="card">
+            <h3 class="card-title">Recent Reconciliation Activities</h3>
+            <p class="card-subtitle">Last 5 activities related to reconciliation</p>
+            <div id="reconcile-activities-list"></div>
+          </div>
+        </div>
+      </section>
+    </main>
+ </div>
+
+  <!-- DEAL ROOM MODAL -->
+  <div id="deal-room" class="modal hidden">
+    <div class="modal-backdrop"></div>
+    <div class="modal-content">
+      <div class="modal-header">
+        <div class="modal-title">Deal Room</div>
+        <div class="timer-ring">
+          <div class="timer-inner">
+            <div id="timer-text">15:00</div>
+            <div class="timer-label">SLA</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid-2 gap">
+        <div class="subcard">
+          <div class="label">Poster</div>
+          <div id="deal-poster-username" class="bold"></div>
+          <div class="label mt-2">Legal Name</div>
+          <div id="deal-poster-legal"></div>
+        </div>
+        <div class="subcard">
+          <div class="label">Subscriber</div>
+          <div class="bold">@you_subscriber</div>
+          <div class="label mt-2">Legal Name</div>
+          <div>You (Verified)</div>
+        </div>
+      </div>
+
+      <div class="subcard mt-3">
+        <div class="deal-main">
+          <div>
+            <div id="deal-route" class="bold"></div>
+            <div id="deal-amount" class="muted"></div>
+          </div>
+          <div class="deal-hint">
+            Subscribers receive float first • 15 min SLA
+          </div>
+        </div>
+      </div>
+
+      <div class="grid-3 gap mt-3">
+        <div class="subcard chat-card">
+          <div class="subcard-title">Chat</div>
+          <div id="chat-list" class="chat-list"></div>
+          <div class="chat-input-row">
+            <input id="chat-input" type="text" placeholder="Type a message as subscriber..." />
+            <button id="chat-send-btn" class="btn-secondary">Send</button>
+          </div>
+   </div>
+        <div class="subcard actions-card">
+          <div class="subcard-title">Actions</div>
+          <button id="btn-mark-received" class="btn-action">1. Mark float received</button>
+          <button id="btn-mark-paid" class="btn-action disabled">2. Mark payment sent</button>
+          <button id="btn-close-deal" class="btn-danger mt-2">Close room</button>
+          <p class="hint-text mt-2">
+            • If timer hits 00:00 and not completed, deal auto-expires.<br />
+            • Both parties can upload proof inside your live system design.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast hidden"></div>
+
+  </body>
+  </html>
+  
