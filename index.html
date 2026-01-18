@@ -1112,6 +1112,454 @@
 
   <div id="toast" class="toast hidden"></div>
 
+    <script>
+   // FloatLink - Complete JavaScript (Single File, No Modules)
+// Copy this entire code and paste it in a <script> tag in your HTML
+
+(function() {
+  'use strict';
+
+  // ============================================
+  // CONFIGURATION
+  // ============================================
+  
+  const API_BASE_URL = 'http://localhost/floatlink/api';
+  const DEFAULT_USERS = {
+    POSTER: 1,
+    SUBSCRIBER: 2,
+    ADMIN: 3
+  };
+
+  // ============================================
+  // UTILITY FUNCTIONS
+  // ============================================
+
+  function formatCurrency(amount) {
+    return new Intl.NumberFormat('en-TZ', {
+      style: 'currency',
+      currency: 'TZS',
+      minimumFractionDigits: 0
+    }).format(amount);
+  }
+
+  function timeAgo(timestamp) {
+    if (!timestamp) return 'Unknown';
+    const now = new Date();
+    const time = new Date(timestamp);
+    const diff = Math.floor((now - time) / 1000);
+    
+    if (diff < 60) return diff + ' sec ago';
+    if (diff < 3600) return Math.floor(diff / 60) + ' min ago';
+    if (diff < 86400) return Math.floor(diff / 3600) + ' hr ago';
+    return Math.floor(diff / 86400) + ' day ago';
+  }
+
+  function showToast(message) {
+    const toast = document.getElementById('toast');
+    if (toast) {
+      toast.textContent = message;
+      toast.classList.remove('hidden');
+      setTimeout(() => toast.classList.add('hidden'), 3000);
+    } else {
+      alert(message);
+    }
+  }
+
+  function parseAmount(amountStr) {
+    if (typeof amountStr === 'number') return amountStr;
+    return parseFloat(amountStr.replace(/[^0-9.-]/g, ''));
+  }
+
+  // ============================================
+  // API FUNCTIONS
+  // ============================================
+
+  async function apiRequest(endpoint, options = {}) {
+    const url = `${API_BASE_URL}${endpoint}`;
+    
+    const defaultOptions = {
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    };
+    
+    const config = { ...defaultOptions, ...options };
+    
+    try {
+      console.log(`API Request: ${config.method || 'GET'} ${url}`);
+      
+      const response = await fetch(url, config);
+      
+      // Check if response is JSON
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        const text = await response.text();
+        console.error('API returned non-JSON response:', text.substring(0, 200));
+        throw new Error('Server returned an error page instead of JSON');
+      }
+      
+      const data = await response.json();
+      console.log(`API Response:`, data);
+      
+      if (!data.success && data.message) {
+        throw new Error(data.message);
+      }
+      
+      return data;
+    } catch (error) {
+      console.error(`API Error (${endpoint}):`, error);
+      throw error;
+    }
+  }
+
+  // ============================================
+  // OFFERS SECTION
+  // ============================================
+
+  async function loadOffers() {
+    try {
+      const data = await apiRequest('/offers');
+      
+      if (data.success) {
+        displayOffers(data.data);
+      }
+    } catch (error) {
+      console.error('Error loading offers:', error);
+      showToast('Error loading offers: ' + error.message);
+    }
+  }
+
+  function displayOffers(offers) {
+    const offersList = document.getElementById('offers-list');
+    if (!offersList) return;
+    
+    if (offers.length === 0) {
+      offersList.innerHTML = '<p class="muted">No active offers at the moment.</p>';
+      return;
+    }
+    
+    offersList.innerHTML = offers.map(offer => `
+      <div class="subcard">
+        <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 8px;">
+          <div>
+            <div class="bold">@${offer.username}</div>
+            <div class="muted" style="font-size: 0.75rem;">${offer.from_network} → ${offer.to_network}</div>
+          </div>
+          <div style="text-align: right;">
+            <div class="bold" style="color: var(--accent-lime);">${formatCurrency(offer.amount)}</div>
+            <div class="muted" style="font-size: 0.7rem;">${timeAgo(offer.created_at)}</div>
+          </div>
+        </div>
+        <button class="btn-action" onclick="FloatLink.pickOffer(${offer.id})">Pick & Serve</button>
+      </div>
+    `).join('');
+  }
+
+  async function submitOffer(event) {
+    event.preventDefault();
+    
+    try {
+      const fromNetwork = document.getElementById('post-from')?.value;
+      const toNetwork = document.getElementById('post-to')?.value;
+      const amountInput = document.getElementById('post-amount')?.value;
+      
+      if (!fromNetwork || !toNetwork || !amountInput) {
+        showToast('Please fill all fields');
+        return;
+      }
+      
+      const amount = parseAmount(amountInput);
+      
+      if (!amount || amount <= 0) {
+        showToast('Please enter a valid amount');
+        return;
+      }
+      
+      const payload = {
+        from_network: fromNetwork,
+        to_network: toNetwork,
+        amount: amount,
+        poster_id: DEFAULT_USERS.POSTER
+      };
+      
+      console.log('Submitting offer:', payload);
+      
+      const data = await apiRequest('/offers', {
+        method: 'POST',
+        body: JSON.stringify(payload)
+      });
+      
+      if (data.success) {
+        showToast('Offer posted successfully!');
+        document.getElementById('post-offer-form').reset();
+        await loadOffers();
+        setTimeout(() => loadOffersActivities(), 500);
+      } else {
+        showToast('Failed: ' + data.message);
+      }
+    } catch (error) {
+      console.error('Error posting offer:', error);
+      showToast('Error posting offer: ' + error.message);
+    }
+  }
+
+  async function pickOffer(offerId) {
+    if (!confirm('Pick this offer and open deal room?')) return;
+    
+    try {
+      const data = await apiRequest('/deals', {
+        method: 'POST',
+        body: JSON.stringify({
+          offer_id: offerId,
+          subscriber_id: DEFAULT_USERS.SUBSCRIBER
+        })
+      });
+      
+      if (data.success) {
+        showToast('Deal room opened!');
+        await loadOffers();
+      } else {
+        showToast('Failed: ' + data.message);
+      }
+    } catch (error) {
+      console.error('Error picking offer:', error);
+      showToast('Error picking offer');
+    }
+  }
+
+  async function loadOffersActivities() {
+    try {
+      const data = await apiRequest('/activity_log?section=offers&limit=5');
+      
+      if (data.success && data.data) {
+        displayActivities(data.data, 'offers-activities-list');
+      }
+    } catch (error) {
+      console.error('Error loading offers activities:', error);
+    }
+  }
+
+  // ============================================
+  // PROVIDERS SECTION
+  // ============================================
+
+  async function loadProviders() {
+    try {
+      const data = await apiRequest('/providers');
+      
+      if (data.success) {
+        displayProviders(data.data);
+      }
+    } catch (error) {
+      console.error('Error loading providers:', error);
+    }
+  }
+
+  function displayProviders(providers) {
+    const providersList = document.getElementById('providers-list');
+    if (!providersList) return;
+    
+    if (providers.length === 0) {
+      providersList.innerHTML = '<p class="muted">No providers available.</p>';
+      return;
+    }
+    
+    providersList.innerHTML = providers.map(provider => `
+      <div class="subcard">
+        <div class="subcard-title">@${provider.username}</div>
+        <div class="muted" style="font-size: 0.75rem; margin-bottom: 8px;">
+          ${Array.isArray(provider.networks) ? provider.networks.join(', ') : provider.networks}
+        </div>
+        <div class="stats-grid">
+          <div class="stat-item">
+            <div class="stat-value">${provider.completed_deals}</div>
+            <div class="stat-label">Deals</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-value">${provider.avg_response_time}m</div>
+            <div class="stat-label">Avg Time</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-value">${provider.rating}</div>
+            <div class="stat-label">Rating</div>
+          </div>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  async function loadProvidersActivities() {
+    try {
+      const data = await apiRequest('/activity_log?section=providers&limit=5');
+      
+      if (data.success) {
+        displayActivities(data.data, 'providers-activities-list');
+      }
+    } catch (error) {
+      console.error('Error loading provider activities:', error);
+    }
+  }
+
+  // ============================================
+  // RECONCILIATION SECTION
+  // ============================================
+
+  async function loadReconciliation() {
+    try {
+      const data = await apiRequest('/reconciliation');
+      
+      if (data.success) {
+        displayReconciliation(data.data);
+      }
+    } catch (error) {
+      console.error('Error loading reconciliation:', error);
+    }
+  }
+
+  function displayReconciliation(data) {
+    const balances = data.balances;
+    
+    const updates = {
+      'kpi-cash': balances['Cash'] || 0,
+      'kpi-mpesa': balances['M-Pesa'] || 0,
+      'kpi-airtel': balances['Airtel'] || 0,
+      'kpi-tigo-halo': (balances['Tigo'] || 0) + (balances['Halopesa'] || 0),
+      'kpi-crdb': balances['CRDB'] || 0,
+      'kpi-nmb': balances['NMB'] || 0,
+      'kpi-bank': balances['Other Bank'] || 0,
+      'kpi-working-float': balances['Working Float'] || 0
+    };
+    
+    Object.entries(updates).forEach(([id, value]) => {
+      const el = document.getElementById(id);
+      if (el) el.textContent = formatCurrency(value);
+    });
+    
+    const totalEl = document.getElementById('total-capital');
+    if (totalEl) totalEl.textContent = formatCurrency(data.total_capital);
+  }
+
+  async function loadReconcileActivities() {
+    try {
+      const data = await apiRequest('/activity_log?section=reconcile&limit=5');
+      
+      if (data.success) {
+        displayActivities(data.data, 'reconcile-activities-list');
+      }
+    } catch (error) {
+      console.error('Error loading reconcile activities:', error);
+    }
+  }
+
+  // ============================================
+  // GENERIC FUNCTIONS
+  // ============================================
+
+  function displayActivities(activities, elementId) {
+    const container = document.getElementById(elementId);
+    if (!container) return;
+    
+    if (!activities || activities.length === 0) {
+      container.innerHTML = `
+        <div class="activity-item">
+          <div class="activity-info">
+            <div class="activity-details" style="color: var(--text-muted);">No recent activities</div>
+          </div>
+        </div>
+      `;
+      return;
+    }
+    
+    container.innerHTML = activities.map(activity => {
+      let amountClass = 'activity-neutral';
+      if (activity.amount) {
+        amountClass = activity.amount > 0 ? 'activity-positive' : 'activity-negative';
+      }
+      
+      return `
+        <div class="activity-item">
+          <div class="activity-info">
+            <div class="activity-type">${activity.type || activity.activity_type || 'Activity'}</div>
+            <div class="activity-details">${activity.details || 'No details'}</div>
+            <div class="activity-time">${activity.time_ago || timeAgo(activity.created_at)}</div>
+          </div>
+          ${activity.amount ? `
+            <div class="activity-amount ${amountClass}">
+              ${formatCurrency(Math.abs(activity.amount))}
+            </div>
+          ` : ''}
+        </div>
+      `;
+    }).join('');
+  }
+
+  function switchSection(section) {
+    ['offers', 'providers', 'reconcile'].forEach(sec => {
+      const el = document.getElementById(`section-${sec}`);
+      if (el) el.classList.add('hidden');
+    });
+    
+    const target = document.getElementById(`section-${section}`);
+    if (target) target.classList.remove('hidden');
+    
+    document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active'));
+    const navBtn = document.getElementById(`nav-${section}`);
+    if (navBtn) navBtn.classList.add('active');
+    
+    if (section === 'offers') {
+      loadOffers();
+      loadOffersActivities();
+    } else if (section === 'providers') {
+      loadProviders();
+      loadProvidersActivities();
+    } else if (section === 'reconcile') {
+      loadReconciliation();
+      loadReconcileActivities();
+    }
+  }
+
+  // ============================================
+  // INITIALIZATION
+  // ============================================
+
+  function init() {
+    console.log('FloatLink initialized. API URL:', API_BASE_URL);
+    
+    // Navigation
+    const navOffers = document.getElementById('nav-offers');
+    const navProviders = document.getElementById('nav-providers');
+    const navReconcile = document.getElementById('nav-reconcile');
+    
+    if (navOffers) navOffers.addEventListener('click', () => switchSection('offers'));
+    if (navProviders) navProviders.addEventListener('click', () => switchSection('providers'));
+    if (navReconcile) navReconcile.addEventListener('click', () => switchSection('reconcile'));
+    
+    // Forms
+    const postOfferForm = document.getElementById('post-offer-form');
+    if (postOfferForm) postOfferForm.addEventListener('submit', submitOffer);
+    
+    // Load initial data
+    loadOffers();
+    loadOffersActivities();
+    
+    console.log('All event listeners attached');
+  }
+
+  // Expose functions globally
+  window.FloatLink = {
+    pickOffer,
+    switchSection
+  };
+
+  // Initialize when DOM is ready
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+
+})();
+</script>
   </body>
   </html>
   
